@@ -1562,6 +1562,9 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
   vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
 
+  /* notify callbacks */
+  error = call_sw_interface_add_del_callbacks (vnm, hw_if_index, /* is_create */ true);
+
   /* free the old name vector */
   vec_free (old_name);
 
