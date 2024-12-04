@@ -32,7 +32,7 @@ macro(add_vpp_packaging)
 
   # extract version from git
   execute_process(
-    COMMAND git describe --long --match v*
+    COMMAND git describe --always --long --match
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE VER
     OUTPUT_STRIP_TRAILING_WHITESPACE

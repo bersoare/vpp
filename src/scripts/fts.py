@@ -93,7 +93,7 @@ def filelist_from_git_ls():
 
 
 def version_from_git():
-    git_describe = "git describe"
+    git_describe = "git describe --always"
     rv = run(git_describe.split(), stdout=PIPE, stderr=PIPE)
     if rv.returncode != 0:
         sys.exit(rv.returncode)

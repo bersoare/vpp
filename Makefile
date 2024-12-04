@@ -437,7 +437,7 @@ dist:
 	      --format=tar \
 	      -o $(DIST_FILE) \
 	    HEAD ; \
-	    git describe --long > $(BR)/.version ; \
+	    git describe --long --always > $(BR)/.version ; \
 	else \
 	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
 	    src/scripts/version > $(BR)/.version ; \
