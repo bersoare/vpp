@@ -1973,6 +1973,29 @@ vlib_cli_init (vlib_main_t * vm)
   return error;
 }
 
+static clib_error_t *
+show_start_time (vlib_main_t * vm, unformat_input_t * input,
+	  vlib_cli_command_t * cmd)
+{
+  vlib_cli_output(vm, "%llu", vm->cpu_time_main_loop_start);
+
+  return 0;
+}
+
+/*?
+ * Displays the unix timestamp when the system was started.
+ *
+ * @cliexpar
+ * @cliexstart{show starttime}
+ * 1732350755
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (show_boot_time_command, static) = {
+  .path = "show starttime",
+  .short_help = "Show start time",
+  .function = show_start_time,
+};
+
 VLIB_INIT_FUNCTION (vlib_cli_init);
 
 /*
