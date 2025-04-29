@@ -4,6 +4,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/interface/common.h>
 #include <vnet/interface/tx_queue_funcs.h>
 #include <vlib/unix/unix.h>
 
@@ -118,6 +119,15 @@ vnet_hw_if_tx_queue_assign_thread (vnet_main_t *vnm, u32 queue_index,
     "assign_thread: interface %v queue-id %u thread %u queue-shared %s",
     hi->name, txq->queue_id, thread_index,
     (txq->shared_queue == 1 ? "yes" : "no"));
+}
+
+void
+vnet_hw_if_tx_queue_assign_any_thread (vnet_main_t *vnm, u32 queue_index)
+{
+  clib_thread_index_t thread_index = next_thread_index (vnm, VNET_HW_IF_RXQ_THREAD_ANY);
+  log_debug ("assigning thread %d to tx queue %d", thread_index, queue_index);
+
+  return vnet_hw_if_tx_queue_assign_thread (vnm, queue_index, thread_index);
 }
 
 void

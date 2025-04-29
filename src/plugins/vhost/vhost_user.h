@@ -112,6 +112,10 @@ typedef struct
   u8 enable_packed;
   u8 enable_event_idx;
   u8 use_custom_mac;
+  // whether to automatically perform
+  // tx placement across all available queues
+  // or not (only do placement for one tx queue per worker)
+  u8 auto_tx_placement;
 
   /* return */
   u32 sw_if_index;
@@ -285,10 +289,19 @@ typedef struct
   u8 enable_packed;
 
   u8 enable_event_idx;
+
+  /* Perform automatic tx queue placement for all queues */
+  u8 auto_tx_placement;
 } vhost_user_intf_t;
 
+// VHOST_TXQ maps to a rx queue in vpp.
+// think of it as being a TX queue on the vhost peer.
+// vpp rx queue ids are odds (qid%2 == 1).
 #define FOR_ALL_VHOST_TXQ(qid, vui) for (qid = 1; qid < vui->num_qid; qid += 2)
 
+// VHOST_RXQ maps to a tx queue in vpp.
+// think of it as being a RX queue on the vhost peer.
+// vpp rx queue ids are even (qid%2 == 0).
 #define FOR_ALL_VHOST_RXQ(qid, vui) for (qid = 0; qid < vui->num_qid; qid += 2)
 
 #define FOR_ALL_VHOST_RX_TXQ(qid, vui) for (qid = 0; qid < vui->num_qid; qid++)

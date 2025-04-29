@@ -114,16 +114,41 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
   }
 }
 
+/**
+ * @brief Unassign existing tx queue to thread mappings and re-assign
+ * new tx queue to thread mappings.
+ * if this vhost-user interface has the attribute `auto_tx_placement` set,
+ * only that qid is assigned, as opposed to all qids.
+ * if the queue state is either not started or not enabled, that queue is unassigned.
+ */
 static_always_inline void
 vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
 {
+  // from https://qemu-project.gitlab.io/qemu/interop/vhost-user.html:
+
+  // - While a ring is stopped, the back-end must not process the ring at all, regardless of whether it is enabled or disabled.
+  //   The enabled/disabled state should still be tracked, though, so it can come into effect once the ring is started.
+  // - started and disabled: The back-end must process the ring without causing any side effects. 
+  //   For example, for a networking device, in the disabled state the back-end must not supply any new RX packets, but must process and discard any TX packets.
+  // - started and enabled: The back-end must process the ring normally, i.e. process all requests and execute them.
+
   vnet_main_t *vnm = vnet_get_main ();
   vhost_user_vring_t *rxvq = &vui->vrings[qid];
   u32 q = qid >> 1, rxvq_count;
 
   ASSERT ((qid & 1) == 0);
+
+  // if the queue is not started or enabled, we should unassign
+  // the threads. usually means the other end wont be reading packets
+  // off of this queue
   if (!rxvq->started || !rxvq->enabled)
+  {
+    vu_log_debug (vui, "queue disabled. unassigning threads on tx queue %d for %d. started: %s, enabled: %s",
+        qid, vui->sock_filename, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
+    for (u32 i = 0; i < vlib_get_n_threads (); i++)
+        vnet_hw_if_tx_queue_unassign_thread (vnm, qid, i);
     return;
+  }
 
   rxvq_count = (qid >> 1) + 1;
   if (rxvq->queue_index == ~0)
@@ -133,25 +158,44 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
       rxvq->qid = q;
     }
 
-  FOR_ALL_VHOST_RXQ (q, vui)
-  {
-    vhost_user_vring_t *rxvq = &vui->vrings[q];
-    u32 qi = rxvq->queue_index;
-
-    if (rxvq->queue_index == ~0)
-      break;
-    for (u32 i = 0; i < vlib_get_n_threads (); i++)
-      vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
-  }
-
-  for (u32 i = 0; i < vlib_get_n_threads (); i++)
+  // if we get here, the queue `qid` is enabled and started.
+  if (vui->auto_tx_placement) 
     {
-      vhost_user_vring_t *rxvq =
-	&vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
       u32 qi = rxvq->queue_index;
+      vu_log_debug (vui, "assigning thread to tx queue %d for %s", qi, vui->sock_filename);
 
-      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+      for (u32 i = 0; i < vlib_get_n_threads (); i++)
+          vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
+
+      vnet_hw_if_tx_queue_assign_any_thread (vnm, qi);
     }
+  else
+    // this `else` block is the default behaviour in vpp, which
+    // ensures at least one queue is served by one of the workers.
+    // a problem here is that we do perform placement even if the queue is disabled
+    // and would result in packet loss.
+    // i'll be fixing this behaviour depending on the feedback from the vpp-dev team
+    {
+      FOR_ALL_VHOST_RXQ (q, vui)
+      {
+        vhost_user_vring_t *rxvq = &vui->vrings[q];
+        u32 qi = rxvq->queue_index;
+
+        if (rxvq->queue_index == ~0)
+          break;
+        for (u32 i = 0; i < vlib_get_n_threads (); i++)
+          vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
+      }
+
+      for (u32 i = 0; i < vlib_get_n_threads (); i++)
+      {
+        vhost_user_vring_t *rxvq =
+    &vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
+        u32 qi = rxvq->queue_index;
+
+        vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+      }
+  }
 
   vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
 }
@@ -1685,6 +1729,8 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
+  vui->auto_tx_placement = args->auto_tx_placement;
+
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
   vhost_user_rx_thread_placement (vui, 1);
 
@@ -1784,6 +1830,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	args.enable_packed = 1;
       else if (unformat (line_input, "event-idx"))
 	args.enable_event_idx = 1;
+      else if (unformat (line_input, "auto-tx-placement"))
+  args.auto_tx_placement = 1;
       else if (unformat (line_input, "feature-mask 0x%llx",
 			 &args.feature_mask))
 	;
@@ -2380,7 +2428,7 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
     "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso] "
-    "[packed] [event-idx]",
+    "[packed] [event-idx] [auto-tx-placement]",
     .function = vhost_user_connect_command_fn,
     .is_mp_safe = 1,
 };

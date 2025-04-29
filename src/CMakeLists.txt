@@ -25,6 +25,7 @@ if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
   set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
 endif()
 
+include(CMakePrintHelpers)
 include(CheckCCompilerFlag)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
@@ -45,6 +46,8 @@ execute_process(
 if (VPP_PLATFORM)
   set(VPP_VERSION ${VPP_VERSION}-${VPP_PLATFORM_NAME})
 endif()
+
+cmake_print_variables(VPP_VERSION)
 
 string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
