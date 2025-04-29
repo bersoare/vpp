@@ -112,6 +112,10 @@ typedef struct
   u8 enable_packed;
   u8 enable_event_idx;
   u8 use_custom_mac;
+  // whether to automatically perform
+  // tx placement across all available queues
+  // or not (only do placement for one tx queue per worker)
+  u8 auto_tx_placement;
 
   /* return */
   u32 sw_if_index;
@@ -285,6 +289,9 @@ typedef struct
   u8 enable_packed;
 
   u8 enable_event_idx;
+
+  /* Perform automatic tx queue placement for all queues */
+  u8 auto_tx_placement;
 } vhost_user_intf_t;
 
 #define FOR_ALL_VHOST_TXQ(qid, vui) for (qid = 1; qid < vui->num_qid; qid += 2)

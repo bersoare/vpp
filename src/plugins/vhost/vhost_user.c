@@ -144,14 +144,30 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
       vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
   }
 
-  for (u32 i = 0; i < vlib_get_n_threads (); i++)
+  if (vui->auto_tx_placement) 
     {
-      vhost_user_vring_t *rxvq =
-	&vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
-      u32 qi = rxvq->queue_index;
+      FOR_ALL_VHOST_TXQ(q, vui)
+      {
+        clib_thread_index_t thread_index = next_thread_index (vnm, VNET_HW_IF_RXQ_THREAD_ANY);
+          vhost_user_vring_t *rxvq =
+      &vui->vrings[VHOST_VRING_IDX_TX (i % rxvq_count)];
+          u32 qi = rxvq->queue_index;
 
-      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+          vnet_hw_if_tx_queue_assign_thread (vnm, qi, thread_index);
+      }
     }
+  else
+    {
+      for (u32 i = 0; i < vlib_get_n_threads (); i++)
+        {
+          vhost_user_vring_t *rxvq =
+      &vui->vrings[VHOST_VRING_IDX_RX (i % rxvq_count)];
+          u32 qi = rxvq->queue_index;
+
+          vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+        }
+    }
+
 
   vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
 }
@@ -1687,6 +1703,11 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
   vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
   vhost_user_rx_thread_placement (vui, 1);
+
+  if (vui != NULL) 
+    {
+      vui->auto_tx_placement = args->auto_tx_placement;
+    }
 
   if (args->renumber)
     vnet_interface_name_renumber (sw_if_idx, args->custom_dev_instance);
