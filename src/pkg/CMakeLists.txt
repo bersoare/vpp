@@ -39,16 +39,16 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# parse /etc/os-release
-file(READ "/etc/os-release" os_release)
-string(REPLACE "\n" ";" os_release ${os_release})
-foreach(l ${os_release})
-  string(REPLACE "=" ";" l ${l})
-  list(GET l 0 _name)
-  list(GET l 1 _value)
-  string(REPLACE "\"" "" _value ${_value})
-  set(OS_${_name} ${_value})
-endforeach()
+# # parse /etc/os-release
+# file(READ "/etc/os-release" os_release)
+# string(REPLACE "\n" ";" os_release ${os_release})
+# foreach(l ${os_release})
+#   string(REPLACE "=" ";" l ${l})
+#   list(GET l 0 _name)
+#   list(GET l 1 _value)
+#   string(REPLACE "\"" "" _value ${_value})
+#   set(OS_${_name} ${_value})
+# endforeach()
 
 set(VPP_DEB_BUILD_DEPENDS "python3-all, python3-setuptools")
 set(VPP_DEB_WITH_PYTHON2 "no")
