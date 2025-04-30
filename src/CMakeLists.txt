@@ -46,6 +46,10 @@ if (VPP_PLATFORM)
   set(VPP_VERSION ${VPP_VERSION}-${VPP_PLATFORM_NAME})
 endif()
 
+if (NOT VPP_VERSION)
+  set(VPP_VERSION "dummy_version")
+endif()
+
 string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
 
