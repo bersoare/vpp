@@ -150,7 +150,7 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
       {
         clib_thread_index_t thread_index = next_thread_index (vnm, VNET_HW_IF_RXQ_THREAD_ANY);
           vhost_user_vring_t *rxvq =
-      &vui->vrings[VHOST_VRING_IDX_TX (i % rxvq_count)];
+      &vui->vrings[VHOST_VRING_IDX_TX (qid % rxvq_count)];
           u32 qi = rxvq->queue_index;
 
           vnet_hw_if_tx_queue_assign_thread (vnm, qi, thread_index);
