@@ -143,8 +143,8 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
   // off of this queue
   if (!rxvq->started || !rxvq->enabled)
   {
-    vu_log_debug (vui, "queue disabled. unassigning threads on tx queue %d for %d. started: %s, enabled: %s",
-        qid, vui->sock_filename, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
+    vu_log_debug (vui, "queue disabled. unassigning threads on tx queue %d. started: %s, enabled: %s",
+        qid, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
     for (u32 i = 0; i < vlib_get_n_threads (); i++)
         vnet_hw_if_tx_queue_unassign_thread (vnm, qid, i);
     return;
@@ -162,7 +162,7 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
   if (vui->auto_tx_placement) 
     {
       u32 qi = rxvq->queue_index;
-      vu_log_debug (vui, "assigning thread to tx queue %d for %s", qi, vui->sock_filename);
+      vu_log_debug (vui, "assigning thread to tx queue %d", qid);
 
       for (u32 i = 0; i < vlib_get_n_threads (); i++)
           vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
