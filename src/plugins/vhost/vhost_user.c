@@ -138,21 +138,8 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
 
   ASSERT ((qid & 1) == 0);
 
-  // if the queue is not started or enabled, we should unassign
-  // the threads. usually means the other end wont be reading packets
-  // off of this queue
   if (!rxvq->started || !rxvq->enabled)
-  {
-    // if there is a thread assigned to this queue, and it is either not started or enabled, we unassign it
-    if (rxvq->thread_index != 0)
-    {
-      vu_log_debug (vui, "queue disabled. unassigning thread %d on tx queue %d. started: %s, enabled: %s",
-          rxvq->thread_index, rxvq->queue_index, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
-          vnet_hw_if_tx_queue_unassign_thread (vnm, rxvq->queue_index, rxvq->thread_index);
-    }
-
     return;
-  }
 
   rxvq_count = (qid >> 1) + 1;
   if (rxvq->queue_index == ~0)
@@ -162,23 +149,32 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
       rxvq->qid = q;
     }
 
-  // if we get here, the queue `qid` is enabled and started.
   if (vui->auto_tx_placement) 
+    // if this feature is on, we want to make sure that all
+    // queues that are enabled and started get a placement.
     {
-      u32 qi = rxvq->queue_index;
-      vu_log_debug (vui, "assigning thread to tx queue %d", qid);
+      FOR_ALL_VHOST_RXQ (q, vui)
+      {
+        vhost_user_vring_t *rxvq = &vui->vrings[q];
+        u32 qi = rxvq->queue_index;
 
-      for (u32 i = 0; i < vlib_get_n_threads (); i++)
+        if (rxvq->queue_index == ~0)
+          break;
+        for (u32 i = 0; i < vlib_get_n_threads (); i++)
           vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
 
-      vnet_hw_if_tx_queue_assign_any_thread (vnm, qi);
+        if (rxvq->enabled && rxvq->started)
+        {
+          vu_log_debug (vui, "assigning thread to tx queue %d", qid);
+          vnet_hw_if_tx_queue_assign_any_thread (vnm, qi);
+        }
+      }
     }
   else
     // this `else` block is the default behaviour in vpp, which
     // ensures at least one queue is served by one of the workers.
     // a problem here is that we do perform placement even if the queue is disabled
     // and would result in packet loss.
-    // i'll be fixing this behaviour depending on the feedback from the vpp-dev team
     {
       FOR_ALL_VHOST_RXQ (q, vui)
       {
