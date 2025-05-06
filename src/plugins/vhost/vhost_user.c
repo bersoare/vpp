@@ -2240,6 +2240,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
 		       hw_if_indices[i]);
       vlib_cli_output (vm, "  Number of qids %u", vui->num_qid);
+      vlib_cli_output (vm, "  Auto tx queue placement: %s", 
+          (vui->auto_tx_placement) ? "enabled" : "disabled");
       if (vui->enable_gso)
 	vlib_cli_output (vm, "  GSO enable");
       if (vui->enable_packed)
