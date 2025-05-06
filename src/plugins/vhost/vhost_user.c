@@ -144,9 +144,9 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
   if (!rxvq->started || !rxvq->enabled)
   {
     vu_log_debug (vui, "queue disabled. unassigning threads on tx queue %d. started: %s, enabled: %s",
-        qid, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
+        rxvq->queue_index, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
     for (u32 i = 0; i < vlib_get_n_threads (); i++)
-        vnet_hw_if_tx_queue_unassign_thread (vnm, qid, i);
+        vnet_hw_if_tx_queue_unassign_thread (vnm, rxvq->queue_index, i);
     return;
   }
 
