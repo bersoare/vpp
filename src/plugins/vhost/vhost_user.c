@@ -138,8 +138,19 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
 
   ASSERT ((qid & 1) == 0);
 
+  // if the queue is not started or enabled, we should unassign
+  // the threads. usually means the other end wont be reading packets
+  // off of this queue
   if (!rxvq->started || !rxvq->enabled)
   {
+    // if there is a thread assigned to this queue, and it is either not started or enabled, we unassign it
+    if (rxvq->thread_index != 0)
+    {
+      vu_log_debug (vui, "queue disabled. unassigning thread %d on tx queue %d. started: %s, enabled: %s",
+          rxvq->thread_index, rxvq->queue_index, rxvq->started ? "true" : "false", rxvq->enabled ? "true" : "false");
+          vnet_hw_if_tx_queue_unassign_thread (vnm, rxvq->queue_index, rxvq->thread_index);
+    }
+
     return;
   }
 
