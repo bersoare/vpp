@@ -168,8 +168,7 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
 
         if (rxvq->enabled && rxvq->started)
         {
-          for (u32 i = 0; i < vlib_get_n_threads (); i++)
-              vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+          vnet_hw_if_tx_queue_assign_thread (vnm, qi, qi % vlib_get_n_threads ());
         }
       }
     }
