@@ -158,15 +158,18 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
         vhost_user_vring_t *rxvq = &vui->vrings[q];
         u32 qi = rxvq->queue_index;
 
+        vu_log_warn (vui, "tx queue %d assigned to thread %d", qi, rxvq->thread_index);
+
         if (rxvq->queue_index == ~0)
           break;
+
         for (u32 i = 0; i < vlib_get_n_threads (); i++)
           vnet_hw_if_tx_queue_unassign_thread (vnm, qi, i);
 
         if (rxvq->enabled && rxvq->started)
         {
-          vu_log_debug (vui, "assigning thread to tx queue %d", qid);
-          vnet_hw_if_tx_queue_assign_any_thread (vnm, qi);
+          for (u32 i = 0; i < vlib_get_n_threads (); i++)
+              vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
         }
       }
     }
