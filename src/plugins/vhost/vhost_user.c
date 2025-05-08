@@ -158,6 +158,10 @@ vhost_user_tx_thread_placement (vhost_user_intf_t *vui, u32 qid)
         if (rxvq->queue_index == ~0)
           break;
         
+        // if queue is not enabled, we dont want to assign it
+        if (!rxvq->started || !rxvq->enabled)
+          continue;
+        
         thread_id = thread_id % vlib_get_n_threads ();
         vnet_hw_if_tx_queue_assign_thread (vnm, qi, thread_id);
         thread_id += 1;
